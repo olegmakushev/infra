@@ -1,0 +1,24 @@
+---
+- hosts: all
+  become: yes
+
+  roles:
+      - role: system
+        tags:
+            - system
+
+      - role: geerlingguy.security
+        tags:
+            - security
+
+      - role: geerlingguy.docker
+        tags:
+            - docker
+
+      - role: chriswayg.msmtp-mailer
+        tags:
+            - msmtp
+
+      - name: containers
+        tags:
+          - containers

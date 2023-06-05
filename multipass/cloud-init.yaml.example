@@ -1,0 +1,8 @@
+users:
+  - default
+  - name: vmuser
+    passwd: $6$rounds=4096$0A72L95qatOHhafc$SawAQwEcJBZeby5JG6oX6fM1eY5AVLomnD588nZxxeUbQ9apzKGvI2Reqh6OyC/0bDEw4ssoslVRdBLHWvhxr/
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFxVecL6XUPeSfLlmyovqkvluEb3bta3XH4E5TeNhVhG vmuser

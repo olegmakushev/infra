@@ -1,0 +1,7 @@
+/group_vars/all/secret.yml
+/group_vars/all/vars.yml
+.fact_cache
+.vscode
+NOTES.md
+hosts
+/multipass/cloud-init.yaml

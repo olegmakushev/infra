@@ -1,0 +1,148 @@
+services:
+  nginxproxymanager:
+    container_name: nginxproxymanager
+    image: jc21/nginx-proxy-manager:latest
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    restart: always
+    volumes:
+      - "{{ docker_dir }}/nginxproxymanager/data:/data"
+      - "{{ docker_dir }}/nginxproxymanager/letsencrypt:/etc/letsencrypt"
+
+  syncthing:
+    image: syncthing/syncthing
+    container_name: syncthing
+    hostname: "{{ inventory_hostname }}"
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+    volumes:
+      - "{{ docker_dir }}/syncthing:/var/syncthing"
+    ports:
+      - 8384:8384 # Web UI
+      - 22000:22000/tcp # TCP file transfers
+      - 22000:22000/udp # QUIC file transfers
+      - 21027:21027/udp # Receive local discovery broadcasts
+    restart: unless-stopped
+
+  photoprism_mariadb:
+    container_name: photoprism-mariadb
+    image: mariadb:latest
+    restart: unless-stopped
+    volumes: 
+      - "{{ docker_dir }}/photoprism/db:/var/lib/mysql"
+    environment:
+      - TZ={{ timezone }}
+      - MYSQL_ROOT_PASSWORD={{ photoprism.mysql.root_password }}
+      - MYSQL_DATABASE={{ photoprism.mysql.db }}
+      - MYSQL_USER={{ photoprism.mysql.user }}
+      - MYSQL_PASSWORD={{ photoprism.mysql.password }}
+
+  photoprism:
+    container_name: photoprism
+    image: photoprism/photoprism:latest
+    restart: unless-stopped
+    ports: 
+      - 2342:2342
+    volumes: 
+      - "{{ docker_dir }}/photoprism/app:/photoprism"
+    environment:
+      - TZ={{ timezone }}
+      - PHOTOPRISM_ADMIN_PASSWORD={{ photoprism.password }}
+      - PHOTOPRISM_SITE_URL=http://localhost:2342
+      - PHOTOPRISM_EXPERIMENTAL=false
+      - PHOTOPRISM_HTTP_COMPRESSION=gzip
+      - PHOTOPRISM_DATABASE_DRIVER=mysql
+      - PHOTOPRISM_DATABASE_SERVER=photoprism-mariadb:3306
+      - PHOTOPRISM_AUTH_MODE="public"
+      - PHOTOPRISM_DATABASE_NAME={{ photoprism.mysql.db }}
+      - PHOTOPRISM_DATABASE_USER={{ photoprism.mysql.user }}
+      - PHOTOPRISM_DATABASE_PASSWORD={{ photoprism.mysql.password }}
+      - PHOTOPRISM_DISABLE_CHOWN=false
+      - PHOTOPRISM_DISABLE_BACKUPS=true
+      - PHOTOPRISM_DISABLE_WEBDAV=false
+      - PHOTOPRISM_DETECT_NSFW=true
+      - PHOTOPRISM_UPLOAD_NSFW=false
+      - PHOTOPRISM_DEBUG=true
+      - PHOTOPRISM_THUMB_FILTER=lanczos
+      - PHOTOPRISM_THUMB_UNCACHED=true
+      - PHOTOPRISM_THUMB_SIZE=2048
+      - PHOTOPRISM_THUMB_SIZE_UNCACHED=7680
+      - PHOTOPRISM_JPEG_SIZE=7680 
+      - PHOTOPRISM_JPEG_QUALITY=92
+      - TF_CPP_MIN_LOG_LEVEL=0
+      - PHOTOPRISM_FFMPEG_ENCODER=h264_qsv
+      - PHOTOPRISM_INIT=tensorflow-amd64-avx2
+
+  headphones:
+    image: lscr.io/linuxserver/headphones:latest
+    container_name: headphones
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+      - TZ={{ timezone }}
+    volumes:
+      - "{{ docker_dir }}/headphones/appdata/config:/config"
+      - "{{ docker_dir }}/headphones/downloads:/downloads"
+      - "{{ docker_dir }}/headphones/music:/music"
+    ports:
+      - 8181:8181
+    restart: unless-stopped
+
+  navidrome:
+    image: deluan/navidrome:latest
+    user: {{ guid }}:{{ guid }} # should be owner of volumes
+    ports:
+      - "4533:4533"
+    restart: unless-stopped
+    environment:
+      # Optional: put your config options customization here. Examples:
+      ND_SCANSCHEDULE: 1h
+      ND_LOGLEVEL: info  
+      ND_SESSIONTIMEOUT: 24h
+      ND_BASEURL: ""
+    volumes:
+      - "{{ docker_dir }}/navidrome/data:/data"
+      - "{{ docker_dir }}/navidrome/music:/music"
+
+  homer:
+    image: b4bz/homer
+    #To build from source, comment previous line and uncomment below
+    #build: .
+    container_name: homer
+    volumes:
+      - "{{ docker_dir }}/homer/assets/:/www/assets"
+    ports:
+      - 8080:8080
+    user: {{ guid }}:{{ guid }} # default
+    environment:
+      - INIT_ASSETS=1 # default
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+      - TZ={{ timezone }}
+    volumes:
+      - "{{ docker_dir }}/jellyfin/config:/config"
+      - "{{ docker_dir }}/jellyfin/tvshows:/data/tvshows"
+      - "{{ docker_dir }}/jellyfin/movies:/data/movies"
+    restart: unless-stopped
+
+  nextcloud:
+    image: lscr.io/linuxserver/nextcloud:latest
+    container_name: nextcloud
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+      - TZ={{ timezone }}
+    volumes:
+      - "{{ docker_dir }}/nextcloud/appdata:/config"
+      - "{{ docker_dir }}/nextcloud/data:/data"
+    restart: unless-stopped
+
+

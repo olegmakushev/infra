@@ -1,0 +1,6 @@
+---
+roles:
+  - name: geerlingguy.docker
+  - name: geerlingguy.pip
+  - name: geerlingguy.security
+  - name: chriswayg.msmtp-mailer

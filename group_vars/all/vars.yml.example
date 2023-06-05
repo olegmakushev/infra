@@ -1,0 +1,100 @@
+#
+# Misc
+#
+hostname: '{{ inventory_hostname }}'
+
+timezone: Europe/Amsterdam
+
+ntp_timezone: '{{ timezone }}'
+
+locale: en_US.UTF-8
+
+keyboard_layout: us
+
+username: username
+
+guid: 1000
+
+shell: /bin/bash
+
+ssh_port: 69
+
+#
+# Docker vars
+#
+docker_dir: /opt/docker/data
+
+docker_compose_dir: /opt/docker/compose
+
+docker_apt_gpg_key: "https://download.docker.com/linux/ubuntu/gpg"
+
+docker_apt_repository: "deb http://download.docker.com/linux/ubuntu jammy stable"
+
+#
+# Packages
+#
+extra_packages:
+  - dnf
+  - vim
+  - iperf3
+  - speedtest-cli
+  - htop
+  - stow
+  - exa
+  - git
+  - neofetch
+  - tmux
+  - mosh
+  - rsync
+  - lm-sensors
+  - iotop
+  - ncdu
+
+#
+# Email credentials (for notifications)
+#
+email: example@mail.com
+
+email_login: '{{ email }}'
+
+email_smtp_host: smtp.mailbox.org
+
+email_smtp_port: 465
+
+email_smtp_port_startls: 587
+
+#
+# MSMTP
+#
+msmtp_accounts:
+    - account: mailbox
+      host: '{{ email_smtp_host }}'
+      port: '{{ email_smtp_port_startls }}'
+      auth: 'on'
+      from: '{{ email }}'
+      user: '{{ email }}'
+      password: '{{ email_password }}'
+
+msmtp_default_account: 'mailbox'
+
+msmtp_alias_default: '{{ email }}'
+
+#
+# SSH (geerlingguy.security)
+#
+security_ssh_port: 69
+
+security_sudoers_passwordless: ['{{ username }}']
+
+security_autoupdate_reboot: true
+
+security_autoupdate_mail_to: '{{ email }}'
+
+security_autoupdate_reboot_time: '23:00'
+
+security_autoupdate_mail_on_error: false
+
+#
+# Homer
+#
+homer_assets_dir: "{{ docker_dir }}/homer/assets"
