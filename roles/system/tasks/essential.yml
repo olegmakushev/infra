@@ -1,5 +1,5 @@
 ---
-- name: Update and upgrade packages 
+- name: Update and upgrade packages
   apt:
     update_cache: yes
     upgrade: yes
@@ -31,7 +31,7 @@
     line: "127.0.0.1 {{ inventory_hostname }}"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
 
 - name: Disable cron e-mail notifications
   cron:

@@ -20,6 +20,7 @@ services:
       - PGID={{ guid }}
     volumes:
       - "{{ docker_dir }}/syncthing:/var/syncthing"
+      - "{{ docs_syncthing_folder }}"
     ports:
       - 8384:8384 # Web UI
       - 22000:22000/tcp # TCP file transfers
@@ -48,6 +49,7 @@ services:
       - 2342:2342
     volumes: 
       - "{{ docker_dir }}/photoprism/app:/photoprism"
+      - "{{ media_photo_folder }}"
     environment:
       - TZ={{ timezone }}
       - PHOTOPRISM_ADMIN_PASSWORD={{ photoprism.password }}
@@ -87,6 +89,7 @@ services:
       - "{{ docker_dir }}/headphones/appdata/config:/config"
       - "{{ docker_dir }}/headphones/downloads:/downloads"
       - "{{ docker_dir }}/headphones/music:/music"
+      - "{{ docs_music_folder }}"
     ports:
       - 8181:8181
     restart: unless-stopped
@@ -95,7 +98,7 @@ services:
     image: deluan/navidrome:latest
     user: {{ guid }}:{{ guid }} # should be owner of volumes
     ports:
-      - "4533:4533"
+      - 4533:4533
     restart: unless-stopped
     environment:
       # Optional: put your config options customization here. Examples:
@@ -106,6 +109,7 @@ services:
     volumes:
       - "{{ docker_dir }}/navidrome/data:/data"
       - "{{ docker_dir }}/navidrome/music:/music"
+      - "{{ docs_music_folder }}"
 
   homer:
     image: b4bz/homer
@@ -130,7 +134,8 @@ services:
     volumes:
       - "{{ docker_dir }}/jellyfin/config:/config"
       - "{{ docker_dir }}/jellyfin/tvshows:/data/tvshows"
-      - "{{ docker_dir }}/jellyfin/movies:/data/movies"
+      - "{{ media_video_folder }}"
+      - "{{ docs_music_folder }}"
     restart: unless-stopped
 
   nextcloud:
@@ -143,6 +148,8 @@ services:
     volumes:
       - "{{ docker_dir }}/nextcloud/appdata:/config"
       - "{{ docker_dir }}/nextcloud/data:/data"
+      - "{{ media_folder }}"
+      - "{{ docs_folder }}"
     restart: unless-stopped
 
 

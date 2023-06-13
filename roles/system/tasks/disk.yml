@@ -1,0 +1,112 @@
+---
+- name: Make sure that the all mount folders exists
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    state: directory
+  with_items: "{{ mount_options }}"
+
+- name: Mount parity disk
+  ansible.posix.mount:
+    path: "{{ parity_disk.path }}"
+    src: "{{ parity_disk.src }}"
+    fstype: "{{ parity_disk.fstype }}"
+    opts: "{{ parity_disk.opts }}"
+    state: "{{ parity_disk.state }}"
+
+- name: Mount disks
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.opts }}"
+    state: "{{ item.state }}"
+  with_items: "{{ mount_options }}"
+
+- name: Make sure that the media folders exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    state: directory
+  loop: "{{ mkdir_media_folders }}"
+
+- name: Chmod the user mount directory
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: 0755
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    recurse: yes
+  with_items: "{{ mount_options }}"
+
+- name: Copy the template files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src: templates/snapraid.j2
+      dest: /etc/snapraid.conf
+    - src: templates/snapraid-runner.j2
+      dest: /etc/snapraid-runner.conf
+
+- name: Install Python and python3-pip
+  package:
+    name:
+      - python3
+      - python3-pip
+    state: present
+
+- name: Add snapraid-runner to safe in git config
+  community.general.git_config:
+    name: safe.directory
+    scope: global
+    value: "*"
+
+- name: Clone snapraid-runner repo
+  ansible.builtin.git:
+    repo: https://github.com/Chronial/snapraid-runner.git
+    dest: "/home/{{ username }}/snapraid-runner"
+    force: true
+
+- name: Add snapraid-runner cron job
+  ansible.builtin.cron:
+    name: "snapraid-runner"
+    user: "{{ username }}"
+    weekday: "1"
+    minute: "0"
+    hour: "7"
+    job: "python /home/{{ username }}/snapraid-runner/snapraid-runner.py --conf /etc/snapraid-runner.conf"
+
+- name: Ensure Samba is running and set to start on boot
+  ansible.builtin.service:
+    name: smbd.service
+    state: started
+    enabled: yes
+
+- name: Update sambashare config
+  ansible.builtin.blockinfile:
+    owner: root
+    group: root
+    mode: "0644"
+    path: /etc/samba/smb.conf
+    insertafter: "EOF"
+    block: |
+      [sambashare]
+      comment= Network Shared Folder by Samba Server on Ubuntu
+      path = "/home/{{ username }}"
+      force user = "{{ username }}"
+      force group = "{{ username }}"
+      create mask = 0664
+      force create mode = 0664
+      directory mask = 0775
+      force directory mode = 0775
+      public = yes
+      read only = no
+
+- name: Restart samba
+  ansible.builtin.systemd:
+    name: smbd.service
+    state: restarted

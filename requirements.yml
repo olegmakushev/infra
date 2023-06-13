@@ -4,3 +4,6 @@ roles:
   - name: geerlingguy.pip
   - name: geerlingguy.security
   - name: chriswayg.msmtp-mailer
+
+collections:
+  - name: community.general

@@ -98,3 +98,20 @@ security_autoupdate_mail_on_error: false
 # Homer
 #
 homer_assets_dir: "{{ docker_dir }}/homer/assets"
+
+#
+# Disk
+#
+parity_disk:
+  path: "mnt/parity"
+  src: "UUID=t058f81f-5c8d-484c-a942-2d1cc47y4891"
+  fstype: "ext4"
+  opts: "defaults"
+  state: "mounted"
+
+mount_options:
+  - path: "mnt/data"
+    src: "UUID=t058f81f-5c8d-484c-a942-2d1cc47y4891"
+    fstype: "ext4"
+    opts: "defaults"
+    state: "mounted"

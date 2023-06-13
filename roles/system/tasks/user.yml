@@ -19,6 +19,7 @@
     groups:
       - "{{ sudo_group }}"
       - docker
+      - samba
       - users
     append: yes
     update_password: on_create
@@ -27,9 +28,9 @@
   lineinfile:
     path: /etc/sudoers
     state: present
-    regexp: '^%{{ sudo_group }}'
-    line: '%{{ sudo_group }} ALL=(ALL) NOPASSWD: ALL'
-    validate: '/usr/sbin/visudo -cf %s'
+    regexp: "^%{{ sudo_group }}"
+    line: "%{{ sudo_group }} ALL=(ALL) NOPASSWD: ALL"
+    validate: "/usr/sbin/visudo -cf %s"
 
 - name: Chmod the user home directory
   file:
@@ -50,7 +51,7 @@
     modification_time: preserve
     access_time: preserve
 
-- name: Copy the public SSH key 
+- name: Copy the public SSH key
   authorized_key:
     user: "{{ username }}"
     state: present

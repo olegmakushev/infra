@@ -8,11 +8,11 @@
 
 - name: Install docker module for Python
   pip:
-    name: 
+    name:
       - docker
       - docker-compose
 
-- name: Make sure that the all folders exists
+- name: Make sure that the all docker folders exists
   ansible.builtin.file:
     path: "{{ item }}"
     owner: "{{ username }}"
@@ -24,20 +24,24 @@
     - "{{ homer_assets_dir }}"
 
 - name: Copy the template files
-  template: 
-    src: {{ item.src }}
+  template:
+    src: "{{ item.src }}"
     dest: "{{ item.dest }}"
   with_items:
-    - src: templates/compose.yaml
+    - src: templates/compose.j2
       dest: "{{ docker_compose_dir }}/compose.yaml"
-    - src: templates/homer_config.yaml
+    - src: templates/homer_config.j2
       dest: "{{ homer_assets_dir }}/config.yaml"
-
-- name: Copy the homer config file
-  template: 
-    src: templates/homer_config.yaml
-    dest: "{{ homer_assets_dir }}/config.yaml"
 
 - name: Docker-compose up
   community.docker.docker_compose:
     project_src: "{{ docker_compose_dir }}"
+
+- name: Chmod the user docker directory
+  file:
+    path: "{{ docker_dir }}"
+    state: directory
+    mode: 0755
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    recurse: yes
