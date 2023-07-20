@@ -1,0 +1,16 @@
+---
+###############################################################################
+#                               Users Database                                #
+###############################################################################
+
+users:
+  admin:
+    disabled: false
+    displayname: "admin"
+    # Password 123QWEasd
+    password: "$argon2id$v=19$m=65536,t=3,p=4$RVKAZ+X13BDdbscTP8nGnQ$MaWXgnMe5W45j/5cRNrIXLFIWjFWlZw4EQjAm9c+Nyg"
+    email: your.test.email@gmail.com
+    groups:
+      - admins
+      - dev
+...

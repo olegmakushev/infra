@@ -12,14 +12,14 @@ parity {{ parity_disk.path }}/snapraid.parity
 # Format: "content FILE_PATH"
 content /var/snapraid.content
 {% for item in mount_options %}
-content {{ item.path }}/.snapraid.content
+content {{ item.path }}/snapraid.content
 {% endfor %}
 
 # Defines the data disks to use
 # The order is relevant for parity, do not change it
 # Format: "disk DISK_NAME DISK_MOUNT_POINT"
 {% for item in mount_options %}
-disk SmallWD {{ item.path }}/.snapraid.content
+disk SmallWD {{ item.path }}/
 {% endfor %}
 
 # Excludes hidden files and directories (uncomment to enable).
@@ -34,6 +34,7 @@ disk SmallWD {{ item.path }}/.snapraid.content
 exclude *.unrecoverable
 exclude /tmp/
 exclude /downloads/
+exclude /node_modules/
 exclude /lost+found/
 exclude *.!sync
 exclude .AppleDouble

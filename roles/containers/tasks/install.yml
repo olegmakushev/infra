@@ -18,20 +18,47 @@
     owner: "{{ username }}"
     group: "{{ username }}"
     state: directory
-  loop:
-    - "{{ docker_compose_dir }}"
-    - "{{ docker_dir }}"
-    - "{{ homer_assets_dir }}"
+    mode: 0775
+  loop: "{{ docker_mkdir_folders }}"
 
 - name: Copy the template files
   template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
+    force: "{{ item.force }}"
   with_items:
-    - src: templates/compose.j2
+    - src: templates/docker_compose.j2
       dest: "{{ docker_compose_dir }}/compose.yaml"
+      force: true
     - src: templates/homer_config.j2
-      dest: "{{ homer_assets_dir }}/config.yaml"
+      dest: "{{ docker_dir }}/homer/config.yml"
+      force: true
+    - src: templates/traefik_traefik.j2
+      dest: "{{ docker_dir }}/traefik/traefik.yml"
+      force: true
+    - src: templates/traefik_acme.j2
+      dest: "{{ traefik.acme_file_path }}"
+      force: false
+    - src: templates/traefik_config.j2
+      dest: "{{ docker_dir }}/traefik/config.yml"
+      force: true
+    - src: templates/authelia_configuration.j2
+      dest: "{{ docker_dir }}/authelia/configuration.yml"
+      force: true
+    - src: templates/authelia_users_database.j2
+      dest: "{{ docker_dir }}/authelia/users_database.yml"
+      force: true
+
+- name: Chmod traefik etc directory
+  file:
+    path: "{{ traefik.etc_folder }}"
+    state: directory
+    mode: 0600
+    recurse: yes
+
+- name: Docker create network
+  community.docker.docker_network:
+    name: "{{ docker_network }}"
 
 - name: Docker-compose up
   community.docker.docker_compose:
@@ -41,7 +68,7 @@
   file:
     path: "{{ docker_dir }}"
     state: directory
-    mode: 0755
+    mode: 0775
     owner: "{{ username }}"
     group: "{{ username }}"
     recurse: yes

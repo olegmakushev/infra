@@ -36,7 +36,7 @@
   file:
     path: "/home/{{ username }}"
     state: directory
-    mode: 0755
+    mode: 0775
     owner: "{{ username }}"
     group: "{{ username }}"
     recurse: yes

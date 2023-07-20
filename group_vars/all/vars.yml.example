@@ -1,34 +1,42 @@
 #
 # Misc
 #
-hostname: '{{ inventory_hostname }}'
+hostname: "{{ inventory_hostname }}"
 
 timezone: Europe/Amsterdam
 
-ntp_timezone: '{{ timezone }}'
+ntp_timezone: "{{ timezone }}"
 
 locale: en_US.UTF-8
 
 keyboard_layout: us
 
-username: username
+username: serveruser
 
-guid: 1000
+# first user - not {{ username }}
+guid: 1001
 
 shell: /bin/bash
 
 ssh_port: 69
 
 #
-# Docker vars
+# Docker
 #
-docker_dir: /opt/docker/data
+docker_dir: /home/{{ username }}/docker/data
 
-docker_compose_dir: /opt/docker/compose
+docker_compose_dir: /home/{{ username }}/docker/compose
 
 docker_apt_gpg_key: "https://download.docker.com/linux/ubuntu/gpg"
 
 docker_apt_repository: "deb http://download.docker.com/linux/ubuntu jammy stable"
+
+homer_dir: "{{ docker_dir }}/homer"
+
+mkdir_docker_folders:
+  - "{{ docker_dir }}"
+  - "{{ docker_compose_dir }}"
+  - "{{ homer_dir }}"
 
 #
 # Packages
@@ -49,15 +57,18 @@ extra_packages:
   - lm-sensors
   - iotop
   - ncdu
+  - snapraid
+  - samba
+  - samba-common
 
 #
-# Email credentials (for notifications)
+# Email credentials (for notifications) working for gmail
 #
-email: example@mail.com
+email: tester@gmail.com
 
-email_login: '{{ email }}'
+email_login: "{{ email }}"
 
-email_smtp_host: smtp.mailbox.org
+email_smtp_host: smtp.gmail.com
 
 email_smtp_port: 465
 
@@ -67,51 +78,81 @@ email_smtp_port_startls: 587
 # MSMTP
 #
 msmtp_accounts:
-    - account: mailbox
-      host: '{{ email_smtp_host }}'
-      port: '{{ email_smtp_port_startls }}'
-      auth: 'on'
-      from: '{{ email }}'
-      user: '{{ email }}'
-      password: '{{ email_password }}'
+  - account: mailbox
+    host: "{{ email_smtp_host }}"
+    port: "{{ email_smtp_port_startls }}"
+    auth: "on"
+    from: "{{ email }}"
+    user: "{{ email }}"
+    password: "{{ email_password }}" # secret
 
-msmtp_default_account: 'mailbox'
+msmtp_default_account: "mailbox"
 
-msmtp_alias_default: '{{ email }}'
+msmtp_alias_default: "{{ email }}"
 
 #
 # SSH (geerlingguy.security)
 #
 security_ssh_port: 69
 
-security_sudoers_passwordless: ['{{ username }}']
+security_sudoers_passwordless: ["{{ username }}"]
 
 security_autoupdate_reboot: true
 
-security_autoupdate_mail_to: '{{ email }}'
+security_autoupdate_mail_to: "{{ email }}"
 
-security_autoupdate_reboot_time: '23:00'
+security_autoupdate_reboot_time: "23:00"
 
 security_autoupdate_mail_on_error: false
 
 #
-# Homer
-#
-homer_assets_dir: "{{ docker_dir }}/homer/assets"
-
-#
 # Disk
 #
+mnt_folder: "/home/{{ username }}/mnt"
+
+# Media folders
+media_folder: "{{ mnt_folder }}/media"
+media_video_folder: "{{ mnt_folder }}/media/video"
+media_photo_folder: "{{ mnt_folder }}/media/photo"
+media_import_folder: "{{ mnt_folder }}/media/import"
+media_other_folder: "{{ mnt_folder }}/media/other"
+
+# Docs folders disk2 500gb
+docs_folder: "{{ mnt_folder }}/docs"
+docs_music_folder: "{{ mnt_folder }}/docs/music"
+docs_projects_folder: "{{ mnt_folder }}/docs/projects"
+docs_syncthing_folder: "{{ mnt_folder }}/docs/syncthing"
+
+mkdir_disk_folders:
+  - "{{ media_folder }}"
+  - "{{ media_video_folder }}"
+  - "{{ media_photo_folder }}"
+  - "{{ media_import_folder }}"
+  - "{{ media_other_folder }}"
+  - "{{ docs_folder }}"
+  - "{{ docs_music_folder }}"
+  - "{{ docs_projects_folder }}"
+  - "{{ docs_syncthing_folder }}"
+
 parity_disk:
-  path: "mnt/parity"
-  src: "UUID=t058f81f-5c8d-484c-a942-2d1cc47y4891"
+  path: "{{ mnt_folder }}/parity"
+  src: "UUID=00000000-0000-0000-0000-000000000000"
+  fstype: "ext4"
+  opts: "defaults"
+  state: "mounted"
+
+data_disk:
+  path: "{{ mnt_folder }}/media"
+  src: "UUID=00000000-0000-0000-0000-000000000000"
   fstype: "ext4"
   opts: "defaults"
   state: "mounted"
 
 mount_options:
-  - path: "mnt/data"
-    src: "UUID=t058f81f-5c8d-484c-a942-2d1cc47y4891"
-    fstype: "ext4"
-    opts: "defaults"
-    state: "mounted"
+  - "{{ data_disk }}"
+
+#
+# SnapRAID
+#
+snapraid_email_to: "emailto@gmail.com"
+snapraid_email_from: "{{ email }}"

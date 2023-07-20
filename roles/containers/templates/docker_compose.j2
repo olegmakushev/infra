@@ -1,0 +1,403 @@
+version: "3"
+
+# ports to:from
+# :ro read only
+
+services:
+  #
+  # Authelia auth middleware for all services
+  #
+  {% with srv_name = services.authelia.srv_name, domain = services.authelia.domain, port_server = services.authelia.port_server, port_expose = services.authelia.port_expose -%}
+  authelia:
+    image: authelia/authelia:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    volumes:
+      - "{{ docker_dir }}/authelia:/config"
+    networks:
+      - {{ docker_network }}
+    expose:
+      - {{ port_expose }}
+    environment:
+      - TZ={{ timezone }}
+    healthcheck:
+      disable: true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.http.middlewares.{{ srv_name }}.forwardAuth.address=http://{{ srv_name }}:{{ port_server }}/api/verify?rd=https://{{ domain }}.{{ routing.domain }}"
+      - "traefik.http.middlewares.{{ srv_name }}.forwardAuth.trustForwardHeader=true"
+      - "traefik.http.middlewares.{{ srv_name }}.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email"
+      - "traefik.docker.network={{ docker_network }}"
+  {%- endwith %}
+
+  #
+  # Reverse proxy with ssl
+  #
+  {% with srv_name = services.traefik.srv_name, domain = services.traefik.domain, useAuthelia = services.traefik.useAuthelia -%}
+  traefik:
+    image: traefik:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - {{ docker_network }}
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DUCKDNS_TOKEN={{ duckdns.token }}
+    command:
+      - --global.insecureSNI=true
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "{{ traefik.acme_file_path }}:/acme.json"
+      - "{{ docker_dir }}/traefik/data:/data"
+      - "{{ docker_dir }}/traefik/traefik.yml:/traefik.yml:ro"
+      - "{{ docker_dir }}/traefik/config.yml:/config.yml:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheaders.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls.certresolver=duckdns"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls.domains[0].main={{ routing.domain }}"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls.domains[0].sans=*.{{ routing.domain }}"
+      - "traefik.http.routers.{{ srv_name }}-secure.service=api@internal"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Docker containers manager
+  #
+  {% with srv_name = services.portainer.srv_name, domain = services.portainer.domain, port_server = services.portainer.port_server, port_expose = services.portainer.port_expose, useAuthelia = services.portainer.useAuthelia -%}
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    volumes:
+      - "/etc/localtime:/etc/localtime:ro"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "{{ docker_dir }}/portainer:/data"
+    networks:
+      - {{ docker_network }}
+    ports:
+      - 8000:8000
+      - {{ port_expose }}:{{ port_server }}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Page with links to all services
+  #
+  {% with srv_name = services.homer.srv_name, domain = services.homer.domain, port_server = services.homer.port_server, port_expose = services.homer.port_expose, useAuthelia = services.homer.useAuthelia -%}
+  homer:
+    image: b4bz/homer:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    volumes:
+      - "{{ docker_dir }}/homer:/www/assets"
+    networks:
+      - {{ docker_network }}
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+    user: {{ guid }}:{{ guid }}
+    environment:
+      - INIT_ASSETS=1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+
+  #
+  # Video and music streaming
+  #
+  {% with srv_name = services.jellyfin.srv_name, domain = services.jellyfin.domain, port_server = services.jellyfin.port_server, port_expose = services.jellyfin.port_expose, useAuthelia = services.jellyfin.useAuthelia -%}
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: {{ srv_name }}
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+    networks:
+      - {{ docker_network }}
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+      - TZ={{ timezone }}
+    volumes:
+      - "{{ docker_dir }}/jellyfin/config:/config"
+      - "{{ docker_dir }}/jellyfin/cache:/cache"
+      - "{{ media_video_folder }}:/media"
+      - "{{ docs_music_folder }}:/music"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Music streaming
+  #
+  {% with srv_name = services.navidrome.srv_name, domain = services.navidrome.domain, port_server = services.navidrome.port_server, port_expose = services.navidrome.port_expose, useAuthelia = services.navidrome.useAuthelia -%}
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: {{ srv_name }}
+    user: {{ guid }}:{{ guid }} # should be owner of volumes
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+    networks:
+      - {{ docker_network }}
+    restart: unless-stopped
+    environment:
+      ND_SCANSCHEDULE: 1h
+      ND_LOGLEVEL: info  
+      ND_SESSIONTIMEOUT: 24h
+      ND_BASEURL: ""
+    volumes:
+      - "{{ docker_dir }}/navidrome/data:/data"
+      - "{{ docs_music_folder }}:/music:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Simple file browser with view and share functions
+  #
+  {% with srv_name = services.filebrowser.srv_name, domain = services.filebrowser.domain, port_server = services.filebrowser.port_server, port_expose = services.filebrowser.port_expose, useAuthelia = services.filebrowser.useAuthelia -%}
+  filebrowser:
+    image: filebrowser/filebrowser:s6
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+    networks:
+      - {{ docker_network }}
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+    volumes:
+      - "{{ mnt_folder }}:/srv"
+      - "{{ docker_dir }}/filebrowser/db:/database"
+      - "{{ docker_dir }}/filebrowser/json:/config"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # BitTorrent client
+  #
+  {% with srv_name = services.deluge.srv_name, domain = services.deluge.domain, port_server = services.deluge.port_server, port_expose = services.deluge.port_expose, useAuthelia = services.deluge.useAuthelia -%}
+  Deluge:
+    image: lscr.io/linuxserver/deluge:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+      - 6881:6881
+      - 6881:6881/udp
+    networks:
+      - {{ docker_network }}
+    environment:
+      - PUID={{ guid }}
+      - PGID={{ guid }}
+      - TZ={{ timezone }}
+    volumes:
+      - "{{ docker_dir }}/deluge/config:/config"
+      - "{{ media_download_folder }}:/downloads"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Photo and video storage with smart lables
+  #
+  {% with srv_name = services.photoprism.srv_name, domain = services.photoprism.domain, port_server = services.photoprism.port_server, port_expose = services.photoprism.port_expose, useAuthelia = services.photoprism.useAuthelia -%}
+  photoprism:
+    image: photoprism/photoprism:latest
+    container_name: {{ srv_name }}
+    restart: unless-stopped
+    stop_grace_period: 10s
+    depends_on:
+      - mariadb
+    security_opt: # see https://github.com/MariaDB/mariadb-docker/issues/434#issuecomment-1136151239
+      - seccomp:unconfined
+      - apparmor:unconfined
+    ports:
+      - {{ port_expose }}:{{ port_server }}
+    networks:
+      - {{ docker_network }}
+    environment:
+      PHOTOPRISM_ADMIN_USER: "{{ username }}"
+      PHOTOPRISM_ADMIN_PASSWORD: "{{ password }}"
+      PHOTOPRISM_AUTH_MODE: "password"
+      PHOTOPRISM_SITE_URL: "https://photoprism.nyashmyash.duckdns.org/"
+      PHOTOPRISM_ORIGINALS_LIMIT: 10000              # file size limit for originals in MB (increase for high-res video)
+      PHOTOPRISM_HTTP_COMPRESSION: "gzip"
+      PHOTOPRISM_LOG_LEVEL: "info"
+      PHOTOPRISM_READONLY: "false"                   # do not modify originals directory (reduced functionality)
+      PHOTOPRISM_EXPERIMENTAL: "false"               # enables experimental features
+      PHOTOPRISM_DISABLE_CHOWN: "false"              # disables updating storage permissions via chmod and chown on startup
+      PHOTOPRISM_DISABLE_WEBDAV: "false"             # disables built-in WebDAV server
+      PHOTOPRISM_DISABLE_SETTINGS: "false"           # disables settings UI and API
+      PHOTOPRISM_RAW_PRESETS: "false"                # enables applying user presets when converting RAW images (reduces performance)
+      PHOTOPRISM_JPEG_QUALITY: 85                    # a higher value increases the quality and file size of JPEG images and thumbnails (25-100)
+      PHOTOPRISM_DETECT_NSFW: "false"                # automatically flags photos as private that MAY be offensive (requires TensorFlow)
+      PHOTOPRISM_UPLOAD_NSFW: "true"                 # allows uploads that MAY be offensive (no effect without TensorFlow)
+      PHOTOPRISM_DATABASE_NAME: {{ photoprism.db.name }}
+      PHOTOPRISM_DATABASE_USER: {{ username }}
+      PHOTOPRISM_DATABASE_PASSWORD: {{ password }}
+      PHOTOPRISM_DATABASE_DRIVER: "mysql"            # use MariaDB 10.5+ or MySQL 8+ instead of SQLite for improved performance
+      PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"     # MariaDB or MySQL database server (hostname:port)
+      PHOTOPRISM_SITE_CAPTION: "AI-Powered Photos App"
+      PHOTOPRISM_SITE_DESCRIPTION: ""                # meta site description
+      PHOTOPRISM_SITE_AUTHOR: ""                     # meta site author
+      PHOTOPRISM_UID: {{ guid }}
+      PHOTOPRISM_GID: {{ guid }}
+      PHOTOPRISM_UMASK: 0000
+    user: {{ guid }}:{{ guid }}
+    working_dir: "/photoprism" # do not change or remove
+    volumes:
+      - "{{ media_photo_folder }}:/photoprism/originals"
+      - "{{ media_video_folder }}:/photoprism/originals/video"
+      - "{{ media_import_folder }}:/photoprism/import"
+      - "{{ docker_dir }}/photoprism/app/storage:/photoprism/storage"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.{{ srv_name }}.entrypoints=http"
+      - "traefik.http.routers.{{ srv_name }}.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.middlewares.{{ srv_name }}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.{{ srv_name }}.middlewares={{ srv_name }}-https-redirect"
+      - "traefik.http.routers.{{ srv_name }}-secure.entrypoints=https"
+      - "traefik.http.routers.{{ srv_name }}-secure.rule=Host(`{{ domain }}.{{ routing.domain }}`)"
+      - "traefik.http.routers.{{ srv_name }}-secure.tls=true"
+      - "traefik.http.routers.{{ srv_name }}-secure.service={{ srv_name }}"
+      - "traefik.http.services.{{ srv_name }}.loadbalancer.server.port={{ port_server }}"
+      - "traefik.docker.network={{ docker_network }}"
+      {% if useAuthelia -%}
+      - "traefik.http.routers.{{ srv_name }}-secure.middlewares=authelia@docker"
+      {%- endif %}
+  {%- endwith %}
+
+  #
+  # Photoprism database
+  #
+  mariadb:
+    image: mariadb:10.11
+    container_name: mariadb
+    restart: unless-stopped
+    stop_grace_period: 10s
+    security_opt: # see https://github.com/MariaDB/mariadb-docker/issues/434#issuecomment-1136151239
+      - seccomp:unconfined
+      - apparmor:unconfined
+    command: mariadbd --innodb-buffer-pool-size=512M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
+    volumes:
+      - "./database:{{ docker_dir }}/mariadb/db"
+    networks:
+      - {{ docker_network }}
+    environment:
+      MARIADB_AUTO_UPGRADE: "1"
+      MARIADB_INITDB_SKIP_TZINFO: "1"
+      TZ: {{ timezone }}
+      MARIADB_ROOT_PASSWORD: {{ photoprism.db.root_password }}
+      MARIADB_DATABASE: {{ photoprism.db.name }}
+      MARIADB_USER: {{ username }}
+      MARIADB_PASSWORD: {{ password }}
+
+networks:
+  {{ docker_network }}:
+    external: true

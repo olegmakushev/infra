@@ -1,0 +1,59 @@
+---
+###############################################################################
+#                           Authelia Configuration                            #
+###############################################################################
+theme: 'dark'
+jwt_secret: 'a_very_important_secret'
+default_redirection_url: 'https://{{ services.authelia.domain }}.{{ routing.domain }}'
+log:
+  level: debug
+server:
+  host: 0.0.0.0
+  port: {{ services.authelia.port_expose }}
+totp:
+  issuer: 'authelia.com'
+
+authentication_backend:
+  file:
+    path: '/config/users_database.yml'
+    password:
+      algorithm: 'argon2id'
+      iterations: 1
+      salt_length: 16
+      parallelism: 8
+      memory: 64
+
+access_control:
+  default_policy: 'deny'
+  rules:
+    {% for item in services -%}
+    - domain: '{{ services[item].domain }}.{{ routing.domain }}'
+      policy: {% if services[item].useAuthelia %}'one_factor'{% else %}'bypass'{% endif %}
+
+    {% endfor %}
+
+session:
+  secret: 'insecure_session_secret'
+  name: 'authelia_session'
+  domain: '{{ routing.domain }}'
+  inactivity: '1h'
+  expiration: '8h'
+
+regulation:
+  max_retries: 5
+  find_time: '2m'
+  ban_time: '5m'
+
+storage:
+  encryption_key: 'encryption_keyencryption_keyencryption_keyencryption_keyencryption_keyencryption_key'
+  local:
+    path: /config/db.sqlite3
+
+notifier:
+  smtp:
+    host: '{{ email_smtp_host }}'
+    port: '{{ email_smtp_port_startls }}'
+    username: '{{ email }}'
+    password: '{{ email_password }}'
+    sender: '{{ email }}'
+...
