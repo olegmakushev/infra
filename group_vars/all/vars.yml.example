@@ -11,18 +11,116 @@ locale: en_US.UTF-8
 
 keyboard_layout: us
 
-username: serveruser
+username: username
 
 # first user - not {{ username }}
-guid: 1001
+guid: 1000
 
 shell: /bin/bash
 
-ssh_port: 69
+ssh_port: 66
+
+#
+# SnapRAID
+#
+snapraid:
+  email_to: "email_to@gmail.com"
+  email_from: "{{ email }}"
+
+#
+# Traefik
+#
+traefik:
+  etc_folder: "/etc/traefik"
+  acme_file_path: "/etc/traefik/acme-v2.json"
+
+#
+# Duckdns
+#
+duckdns:
+  email: "{{ email }}"
+  token: "00000000-0000-0000-0000-000000000000"
+
+#
+# Routing
+#
+routing:
+  domain: "routingdomain.duckdns.org"
+  ip: "192.168.178.100"
+
+#
+# Services
+#
+services:
+  traefik:
+    srv_name: "traefik"
+    domain: "traefik"
+    port_server: "8080"
+    port_expose: "8080"
+    useAuthelia: true
+    description: "Reverse proxy, TLS manager"
+  authelia:
+    srv_name: "authelia"
+    domain: "authelia"
+    port_server: "9091"
+    port_expose: "9091"
+    useAuthelia: false
+    description: "Authentication service for naked applications"
+  portainer:
+    srv_name: "portainer"
+    domain: "portainer"
+    port_server: "9443"
+    port_expose: "9443"
+    useAuthelia: false
+    description: "Docker containers manager"
+  homer:
+    srv_name: "homer"
+    domain: "homer"
+    port_server: "8080"
+    port_expose: "8585"
+    useAuthelia: true
+    description: "Home page with links for all applications"
+  jellyfin:
+    srv_name: "jellyfin"
+    domain: "videos"
+    port_server: "8096"
+    port_expose: "8096"
+    useAuthelia: false
+    description: "Video media service for stream to any device"
+  navidrome:
+    srv_name: "navidrome"
+    domain: "music"
+    port_server: "4533"
+    port_expose: "4533"
+    useAuthelia: false
+    description: "Music media service for listening and organizing the collection"
+  filebrowser:
+    srv_name: "filebrowser"
+    domain: "filebrowser"
+    port_server: "80"
+    port_expose: "8383"
+    useAuthelia: false
+    description: "File managing interface"
+  photoprism:
+    srv_name: "photoprism"
+    domain: "photoprism"
+    port_server: "2342"
+    port_expose: "2342"
+    useAuthelia: false
+    description: "AI-Powered Photos App"
+  deluge:
+    srv_name: "deluge"
+    domain: "deluge"
+    port_server: "8112"
+    port_expose: "8112"
+    useAuthelia: false
+    description: "Deluge is a lightweight, Free Software, cross-platform BitTorrent client"
 
 #
 # Docker
 #
+docker_network: "proxy"
+
 docker_dir: /home/{{ username }}/docker/data
 
 docker_compose_dir: /home/{{ username }}/docker/compose
@@ -31,12 +129,15 @@ docker_apt_gpg_key: "https://download.docker.com/linux/ubuntu/gpg"
 
 docker_apt_repository: "deb http://download.docker.com/linux/ubuntu jammy stable"
 
-homer_dir: "{{ docker_dir }}/homer"
-
-mkdir_docker_folders:
+docker_mkdir_folders:
   - "{{ docker_dir }}"
   - "{{ docker_compose_dir }}"
-  - "{{ homer_dir }}"
+  - "{{ docker_dir }}/homer"
+  - "{{ docker_dir }}/traefik"
+  - "{{ docker_dir }}/traefik/data"
+  - "{{ docker_dir }}/authelia"
+  - "{{ docker_dir }}/deluge"
+  - "{{ traefik.etc_folder }}"
 
 #
 # Packages
@@ -62,9 +163,9 @@ extra_packages:
   - samba-common
 
 #
-# Email credentials (for notifications) working for gmail
+# Email credentials (for notifications)
 #
-email: tester@gmail.com
+email: yourgmailaccaunt@gmail.com
 
 email_login: "{{ email }}"
 
@@ -93,7 +194,7 @@ msmtp_alias_default: "{{ email }}"
 #
 # SSH (geerlingguy.security)
 #
-security_ssh_port: 69
+security_ssh_port: 66
 
 security_sudoers_passwordless: ["{{ username }}"]
 
@@ -110,49 +211,60 @@ security_autoupdate_mail_on_error: false
 #
 mnt_folder: "/home/{{ username }}/mnt"
 
-# Media folders
-media_folder: "{{ mnt_folder }}/media"
-media_video_folder: "{{ mnt_folder }}/media/video"
-media_photo_folder: "{{ mnt_folder }}/media/photo"
-media_import_folder: "{{ mnt_folder }}/media/import"
-media_other_folder: "{{ mnt_folder }}/media/other"
+disks:
+  parity:
+    path: "{{ mnt_folder }}/parity"
+    src: "UUID=00000000-0000-0000-0000-000000000000"
+    fstype: "ext4"
+    opts: "defaults"
+    state: "mounted"
 
-# Docs folders disk2 500gb
-docs_folder: "{{ mnt_folder }}/docs"
-docs_music_folder: "{{ mnt_folder }}/docs/music"
-docs_projects_folder: "{{ mnt_folder }}/docs/projects"
-docs_syncthing_folder: "{{ mnt_folder }}/docs/syncthing"
+  general:
+    path: "{{ mnt_folder }}/general"
+    src: "UUID=00000000-0000-0000-0000-000000000000"
+    fstype: "ext4"
+    opts: "defaults"
+    state: "mounted"
 
-mkdir_disk_folders:
-  - "{{ media_folder }}"
-  - "{{ media_video_folder }}"
-  - "{{ media_photo_folder }}"
-  - "{{ media_import_folder }}"
-  - "{{ media_other_folder }}"
-  - "{{ docs_folder }}"
-  - "{{ docs_music_folder }}"
-  - "{{ docs_projects_folder }}"
-  - "{{ docs_syncthing_folder }}"
+  temporary:
+    path: "{{ mnt_folder }}/temporary"
+    src: "UUID=00000000-0000-0000-0000-000000000000"
+    fstype: "ext4"
+    opts: "defaults"
+    state: "mounted"
 
-parity_disk:
-  path: "{{ mnt_folder }}/parity"
-  src: "UUID=00000000-0000-0000-0000-000000000000"
-  fstype: "ext4"
-  opts: "defaults"
-  state: "mounted"
-
-data_disk:
-  path: "{{ mnt_folder }}/media"
-  src: "UUID=00000000-0000-0000-0000-000000000000"
-  fstype: "ext4"
-  opts: "defaults"
-  state: "mounted"
+  extras:
+    path: "{{ mnt_folder }}/extras"
+    src: "UUID=00000000-0000-0000-0000-000000000000"
+    fstype: "ext4"
+    opts: "defaults"
+    state: "mounted"
 
 mount_options:
-  - "{{ data_disk }}"
+  - "{{ disks.parity }}"
+  - "{{ disks.general }}"
+  - "{{ disks.temporary }}"
+  - "{{ disks.extras }}"
 
-#
-# SnapRAID
-#
-snapraid_email_to: "emailto@gmail.com"
-snapraid_email_from: "{{ email }}"
+folders:
+  docs: "{{ disks.general.path }}/docs"
+  archive: "{{ disks.general.path }}/archive"
+  memories: "{{ disks.general.path }}/memories"
+  music: "{{ disks.general.path }}/music"
+  movies: "{{ disks.general.path }}/movies"
+  screenrecording: "{{ disks.general.path }}/screenrecording"
+
+  downloads: "{{ disks.temporary.path }}/downloads"
+  other: "{{ disks.temporary.path }}/other"
+  projects: "{{ disks.temporary.path }}/projects"
+
+mkdir_disk_folders:
+  - "{{ folders.docs }}"
+  - "{{ folders.archive }}"
+  - "{{ folders.memories }}"
+  - "{{ folders.music }}"
+  - "{{ folders.movies }}"
+  - "{{ folders.screenrecording }}"
+  - "{{ folders.downloads }}"
+  - "{{ folders.other }}"
+  - "{{ folders.projects }}"

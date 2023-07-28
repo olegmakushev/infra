@@ -10,11 +10,11 @@
 
 - name: Mount parity disk
   ansible.posix.mount:
-    path: "{{ parity_disk.path }}"
-    src: "{{ parity_disk.src }}"
-    fstype: "{{ parity_disk.fstype }}"
-    opts: "{{ parity_disk.opts }}"
-    state: "{{ parity_disk.state }}"
+    path: "{{ disks.parity.path }}"
+    src: "{{ disks.parity.src }}"
+    fstype: "{{ disks.parity.fstype }}"
+    opts: "{{ disks.parity.opts }}"
+    state: "{{ disks.parity.state }}"
 
 - name: Mount disks
   ansible.posix.mount:

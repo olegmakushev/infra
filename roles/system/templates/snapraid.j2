@@ -1,7 +1,7 @@
 # Defines the file to use as parity storage
 # It must NOT be in a data disk
 # Format: "parity FILE_PATH"
-parity {{ parity_disk.path }}/snapraid.parity
+parity {{ disks.parity.path }}/snapraid.parity
 
 # Defines the files to use as content list
 # You can use multiple specification to store more copies
