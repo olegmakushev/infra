@@ -1,8 +1,6 @@
 /group_vars/all/secret.yml
 /group_vars/all/vars.yml
-/roles/containers/templates/authelia_users_database.j2
 .fact_cache
 .vscode
-NOTES.md
 hosts
 /multipass/cloud-init.yaml

@@ -17,9 +17,9 @@ content {{ item.path }}/snapraid.content
 
 # Defines the data disks to use
 # The order is relevant for parity, do not change it
-# Format: "disk DISK_NAME DISK_MOUNT_POINT"
+# Format: "data DISK_NAME DISK_MOUNT_POINT"
 {% for item in mount_options %}
-disk SmallWD {{ item.path }}/
+data {{ item.label }} {{ item.path }}/
 {% endfor %}
 
 # Excludes hidden files and directories (uncomment to enable).

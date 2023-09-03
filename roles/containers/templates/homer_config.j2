@@ -13,7 +13,7 @@ documentTitle: "Welcome" # Customize the browser tab text
 # Alternatively a fa icon can be provided:
 icon: "fas fa-windsock"
 
-header: true # Set to false to hide the header
+header: false # Set to false to hide the header
 # Optional: Different hotkey for search, defaults to "/"
 # hotkey:
 #   search: "Shift"
@@ -104,18 +104,30 @@ theme: default # 'default' or one of the themes available in 'src/assets/themes'
 # First level array represents a group.
 # Leave only a "items" key if not using group (group name, icon & tagstyle are optional, section separation will not be displayed).
 services:
-- name: "Application"
-  icon: "fas fa-code-branch"
-  # A path to an image can also be provided. Note that icon take precedence if both icon and logo are set.
-  # logo: "path/to/logo"
-  items:
+  - name: "CloudFlare"
+    icon: "fas fa-code-branch"
+    items:
     {% for item in services -%}
-    - name: "{{ services[item].srv_name }}"
-      # logo: "assets/tools/sample.png"
-      # Alternatively a fa icon can be provided:
-      # icon: "fab fa-jenkins"
-      subtitle: "{{ services[item].description }}"
-      keywords: "{{ services[item].description }}"
-      url: "https://{{ services[item].domain }}.{{ routing.domain }}/"
-      target: "_blank"
+    {% if services[item].domain %}
+
+      - name: "{{ services[item].domain }}"
+        # icon: "fab fa-jenkins"
+        url: "https://{{ services[item].domain }}.{{ cloudflare.domain }}/"
+        target: "_blank"
+
+    {% endif -%}
+    {% endfor %}
+
+  - name: "local"
+    icon: "fas fa-code-branch"
+    items:
+    {% for item in services -%}
+    {% if services[item].port_expose %}
+
+      - name: "{{ services[item].domain }}"
+        # icon: "fab fa-jenkins"
+        url: "http://{{ routing.ip }}:{{ services[item].port_expose }}/"
+        target: "_blank"
+
+    {% endif -%}
     {% endfor %}

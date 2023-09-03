@@ -13,8 +13,7 @@ keyboard_layout: us
 
 username: username
 
-# first user - not {{ username }}
-guid: 1000
+guid: 1001
 
 shell: /bin/bash
 
@@ -28,93 +27,61 @@ snapraid:
   email_from: "{{ email }}"
 
 #
-# Traefik
+# CloudFlare
 #
-traefik:
-  etc_folder: "/etc/traefik"
-  acme_file_path: "/etc/traefik/acme-v2.json"
-
-#
-# Duckdns
-#
-duckdns:
-  email: "{{ email }}"
-  token: "00000000-0000-0000-0000-000000000000"
+cloudflare:
+  domain: "yourdomain.com"
 
 #
 # Routing
 #
 routing:
-  domain: "routingdomain.duckdns.org"
   ip: "192.168.178.100"
 
 #
 # Services
 #
 services:
-  traefik:
-    srv_name: "traefik"
-    domain: "traefik"
-    port_server: "8080"
-    port_expose: "8080"
-    useAuthelia: true
-    description: "Reverse proxy, TLS manager"
-  authelia:
-    srv_name: "authelia"
-    domain: "authelia"
-    port_server: "9091"
-    port_expose: "9091"
-    useAuthelia: false
-    description: "Authentication service for naked applications"
+  cloudflare:
+    srv_name: "cloudflare"
+    domain: ""
+    port_server: ""
+    port_expose: ""
   portainer:
     srv_name: "portainer"
-    domain: "portainer"
-    port_server: "9443"
-    port_expose: "9443"
-    useAuthelia: false
-    description: "Docker containers manager"
+    domain: "dockmng"
+    port_server: "9000"
+    port_expose: "9000"
   homer:
     srv_name: "homer"
     domain: "homer"
     port_server: "8080"
     port_expose: "8585"
-    useAuthelia: true
-    description: "Home page with links for all applications"
   jellyfin:
     srv_name: "jellyfin"
-    domain: "videos"
+    domain: "movies"
     port_server: "8096"
     port_expose: "8096"
-    useAuthelia: false
-    description: "Video media service for stream to any device"
-  navidrome:
-    srv_name: "navidrome"
-    domain: "music"
-    port_server: "4533"
-    port_expose: "4533"
-    useAuthelia: false
-    description: "Music media service for listening and organizing the collection"
   filebrowser:
     srv_name: "filebrowser"
     domain: "filebrowser"
     port_server: "80"
     port_expose: "8383"
-    useAuthelia: false
-    description: "File managing interface"
   photoprism:
     srv_name: "photoprism"
     domain: "photoprism"
     port_server: "2342"
     port_expose: "2342"
-    useAuthelia: false
-    description: "AI-Powered Photos App"
   deluge:
     srv_name: "deluge"
     domain: "deluge"
     port_server: "8112"
     port_expose: "8112"
-    useAuthelia: false
-    description: "Deluge is a lightweight, Free Software, cross-platform BitTorrent client"
+  vaultwarden:
+    srv_name: "vaultwarden"
+    domain: "vltw"
+    port_server: "80"
+    port_expose: "8484"
 
 #
 # Docker
@@ -133,11 +100,7 @@ docker_mkdir_folders:
   - "{{ docker_dir }}"
   - "{{ docker_compose_dir }}"
   - "{{ docker_dir }}/homer"
-  - "{{ docker_dir }}/traefik"
-  - "{{ docker_dir }}/traefik/data"
-  - "{{ docker_dir }}/authelia"
   - "{{ docker_dir }}/deluge"
-  - "{{ traefik.etc_folder }}"
 
 #
 # Packages
@@ -241,12 +204,12 @@ disks:
     state: "mounted"
 
 mount_options:
-  - "{{ disks.parity }}"
   - "{{ disks.general }}"
   - "{{ disks.temporary }}"
   - "{{ disks.extras }}"
 
 folders:
+  # general
   docs: "{{ disks.general.path }}/docs"
   archive: "{{ disks.general.path }}/archive"
   memories: "{{ disks.general.path }}/memories"
@@ -254,6 +217,7 @@ folders:
   movies: "{{ disks.general.path }}/movies"
   screenrecording: "{{ disks.general.path }}/screenrecording"
 
+  # temporary
   downloads: "{{ disks.temporary.path }}/downloads"
   other: "{{ disks.temporary.path }}/other"
   projects: "{{ disks.temporary.path }}/projects"

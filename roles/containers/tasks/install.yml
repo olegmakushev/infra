@@ -33,28 +33,6 @@
     - src: templates/homer_config.j2
       dest: "{{ docker_dir }}/homer/config.yml"
       force: true
-    - src: templates/traefik_traefik.j2
-      dest: "{{ docker_dir }}/traefik/traefik.yml"
-      force: true
-    - src: templates/traefik_acme.j2
-      dest: "{{ traefik.acme_file_path }}"
-      force: false
-    - src: templates/traefik_config.j2
-      dest: "{{ docker_dir }}/traefik/config.yml"
-      force: true
-    - src: templates/authelia_configuration.j2
-      dest: "{{ docker_dir }}/authelia/configuration.yml"
-      force: true
-    - src: templates/authelia_users_database.j2
-      dest: "{{ docker_dir }}/authelia/users_database.yml"
-      force: true
-
-- name: Chmod traefik etc directory
-  file:
-    path: "{{ traefik.etc_folder }}"
-    state: directory
-    mode: 0600
-    recurse: yes
 
 - name: Docker create network
   community.docker.docker_network:

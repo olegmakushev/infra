@@ -1,4 +1,24 @@
 ---
+#
+# Mount disks
+#
+- name: Make sure that the parity mount folders exists
+  ansible.builtin.file:
+    path: "{{ disks.parity.path }}"
+    owner: "{{ username }}"
+    group: "{{ username }}"
+    state: directory
+    mode: 0775
+
+- name: Mount parity disk
+  ansible.posix.mount:
+    path: "{{ disks.parity.path }}"
+    src: "{{ disks.parity.src }}"
+    fstype: "{{ disks.parity.fstype }}"
+    opts: "{{ disks.parity.opts }}"
+    state: "{{ disks.parity.state }}"
+  when: is_multipass != true
+
 - name: Make sure that the all mount folders exists
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -8,14 +28,6 @@
     mode: 0775
   with_items: "{{ mount_options }}"
 
-- name: Mount parity disk
-  ansible.posix.mount:
-    path: "{{ disks.parity.path }}"
-    src: "{{ disks.parity.src }}"
-    fstype: "{{ disks.parity.fstype }}"
-    opts: "{{ disks.parity.opts }}"
-    state: "{{ disks.parity.state }}"
-
 - name: Mount disks
   ansible.posix.mount:
     path: "{{ item.path }}"
@@ -24,6 +36,7 @@
     opts: "{{ item.opts }}"
     state: "{{ item.state }}"
   with_items: "{{ mount_options }}"
+  when: is_multipass != true
 
 - name: Make sure that the media folders exists
   ansible.builtin.file:
@@ -59,9 +72,9 @@
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
   with_items:
-    - src: templates/snapraid.j2
+    - src: templates/snapraid_config.j2
       dest: /etc/snapraid.conf
-    - src: templates/snapraid-runner.j2
+    - src: templates/snapraid-runner_config.j2
       dest: /etc/snapraid-runner.conf
 
 - name: Install Python and python3-pip
@@ -92,15 +105,15 @@
     hour: "7"
     job: "python3 /home/{{ username }}/snapraid-runner/snapraid-runner.py --conf /etc/snapraid-runner.conf"
 
+#
+# Samba Share
+#
 - name: Ensure Samba is running and set to start on boot
   ansible.builtin.service:
     name: smbd.service
     state: started
     enabled: yes
 
-#
-# Samba Share
-#
 - name: Update sambashare config
   ansible.builtin.blockinfile:
     owner: root
