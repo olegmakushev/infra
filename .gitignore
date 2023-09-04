@@ -4,3 +4,4 @@
 .vscode
 hosts
 /multipass/cloud-init.yaml
+**/.DS_Store
